@@ -1,6 +1,7 @@
 .PHONY: cleantestmod testmod
 .PRECIOUS: %.4gm
 
+@# XXX Determine how to provide a list of .4gm paths to process in to a single .pq file
 %.pq:
 	gm_file=$$(echo "$@" | sed 's/\.pq$$/.4gm/'); \
 	python ./app-audit.py -o $@ $$gm_file

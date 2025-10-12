@@ -31,9 +31,21 @@ make testmod
 ```
 
 ### Requirements:
-- Python >=3.6, no external packages
+```bash
+pip install -r requirements.txt
+```
 
 ## Usage
+
+Audit a 4GL Module by providing the path to it:
+
+```bash
+make audittest.pq
+```
+
+Examine the results using any of the included Jupyter notebook files,
+e.g. [newness_compares.ipynb](newness_compares.ipynb)
+
 
 ### app-audit.py CLI Usage
 
