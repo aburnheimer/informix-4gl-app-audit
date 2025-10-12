@@ -32,6 +32,22 @@ def gather_stats(root: Path):
             # skip unreadable entries
             vlog(f"skipping unreadable entry: {p} ({e})")
             continue
+        lines_of_code = 0
+        # Check for plaintext files by suffix
+
+        plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
+            '.txt', '.md', '.csv', '.json', '.yaml', '.yml', '.ini', '.cfg',
+            '.py', '.pl', '.sh', '.bash', '.ksh', '.c', '.h', '.cpp', '.hpp',
+            '.js', '.ts', '.html', '.css', '.xml', '.bat', '.cmd', '.php'}
+        
+        if p.suffix.lower() in plaintext_suffixes or p.name == "Makefile":
+            try:
+                with p.open("r", encoding="utf-8", errors="ignore") as f:
+                    lines_of_code = int(sum(1 for _ in f))
+            except Exception as e:
+                vlog(f"could not count lines in {p}: {e}")
+                lines_of_code = 0
+
         rows.append({
             "abs_path": str(p),
             "rel_path": str(p.relative_to(root)),
@@ -45,6 +61,7 @@ def gather_stats(root: Path):
             "mode_octal": oct(st.st_mode & 0o777),
             "uid": st.st_uid,
             "gid": st.st_gid,
+            "lines_of_code": lines_of_code,
         })
     df = pd.DataFrame(rows)
     if not df.empty:
@@ -80,9 +97,10 @@ def main(argv=None):
 
         print(f"scanned: {root}")
         print(f"files found: {count}")
+        print(f"Printing <=8 example rows:")
         if count:
             pd.set_option("display.max_rows", 10)
-            print(df.head(20).to_string(index=False))
+            print(df.head(8).to_string(index=False))
 
     if not all_dfs:
         print("No valid modules scanned.", file=sys.stderr)
