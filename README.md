@@ -35,13 +35,26 @@ make testmod
 
 ## Usage
 
-### ...py CLI Usage
+### app-audit.py CLI Usage
 
 ```
-usage: . . .
+usage: app-audit.py [-h] [-o OUT] [-v] [roots ...]
+
+Create a DataFrame of filesystem stats for one or more module directories.
+
+positional arguments:
+  roots          module directories to scan (default: audittest.4gm)
+
+options:
+  -h, --help     show this help message and exit
+  -o, --out OUT  optional output filename; use .parquet or .pq to write Parquet (falls back to CSV on error)
+  -v, --verbose  enable verbose logging
 ```
 
-### ...py Example
+### app-audit.py Example
+```bash
+pythonn ./app-audit.py -o audittest.pq audittest.4gm
+```
 
 ## Contributing
 Contributions are welcome. Please open issues and pull requests including:

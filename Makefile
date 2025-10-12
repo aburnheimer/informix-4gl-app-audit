@@ -1,6 +1,10 @@
 .PHONY: cleantestmod testmod
 .PRECIOUS: %.4gm
 
+%.pq:
+	gm_file=$$(echo "$@" | sed 's/\.pq$$/.4gm/'); \
+	python ./app-audit.py -o $@ $$gm_file
+
 %.4gm:
 	mkdir -p $@
 
