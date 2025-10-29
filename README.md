@@ -18,9 +18,11 @@ git clone https://github.com/aburnheimer/informix-4gl-app-audit
 installation of Python provided by the operating system:
 ```bash
 cd informix-4gl-app-audit
-virtualenv ./
+virtualenv .
 # ... or ...
-virtualenv -p /usr/local/bin/python3.6 ./
+virtualenv -p /usr/local/bin/python3.6 .
+# ... or ...
+python3.11 -m venv .
 ```
 
 Create a test source code module to run the audit on:
@@ -65,7 +67,7 @@ options:
 
 ### app-audit.py Example
 ```bash
-pythonn ./app-audit.py -o audittest.pq audittest.4gm
+python ./app-audit.py -o audittest.pq audittest.4gm
 ```
 
 ## Contributing
