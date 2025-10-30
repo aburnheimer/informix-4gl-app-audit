@@ -1,10 +1,10 @@
 .PHONY: cleantestmod testmod
 .PRECIOUS: %.4gm
 
-# XXX Determine how to provide a list of .4gm paths to process in to a single .pq file
+# ...Does not support a list of .4gm paths processing to a single .pq file
 %.pq:
-	gm_loc=$$(echo "$@" | sed 's/\.pq$$/.4gm/'); \
-	python ./app-audit.py -o $@ $$gm_loc
+	gm_name=$$(echo "$@" | sed 's/\.pq$$/.4gm/'); \
+	python ./app-audit.py -o $@ ${MODROOT}/$$gm_name
 
 %.4gm:
 	mkdir -p $@
