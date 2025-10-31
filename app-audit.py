@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 import sys
+import re
 
 VERBOSE = False
 
@@ -32,7 +33,11 @@ def gather_stats(root: Path):
             # skip unreadable entries
             vlog(f"skipping unreadable entry: {p} ({e})")
             continue
-        lines_of_code = 0
+        n_lines = 0
+        n_function_defines= 0
+        n_prepare_defines= 0
+        n_execute_statements= 0
+        n_run_statements= 0
         # Check for plaintext files by suffix
 
         plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
@@ -43,10 +48,18 @@ def gather_stats(root: Path):
         if p.suffix.lower() in plaintext_suffixes or p.name == "Makefile":
             try:
                 with p.open("r", encoding="utf-8", errors="ignore") as f:
-                    lines_of_code = int(sum(1 for _ in f))
+                    for line in f:
+                        n_lines += 1
+                        if re.search(r'.*function\s+\w+\(.*\)', line, re.IGNORECASE):
+                            n_function_defines += 1
+                        if re.search(r'.*prepare\s+\w+\s+from', line, re.IGNORECASE):
+                            n_prepare_defines += 1
+                        if re.search(r'.*execute\s+\w+\s+using', line, re.IGNORECASE):
+                            n_execute_statements += 1
+                        if re.search(r'.*run\s+', line, re.IGNORECASE):
+                            n_run_statements += 1
             except Exception as e:
                 vlog(f"could not count lines in {p}: {e}")
-                lines_of_code = 0
 
         rows.append({
             "abs_path": str(p),
@@ -61,7 +74,11 @@ def gather_stats(root: Path):
             "mode_octal": oct(st.st_mode & 0o777),
             "uid": st.st_uid,
             "gid": st.st_gid,
-            "lines_of_code": lines_of_code,
+            "num_lines": n_lines,
+            "num_function_defines": n_function_defines,
+            "num_prepare_defines": n_prepare_defines,
+            "num_execute_statements": n_execute_statements,
+            "num_run_statements": n_run_statements,
         })
     df = pd.DataFrame(rows)
     if not df.empty:
