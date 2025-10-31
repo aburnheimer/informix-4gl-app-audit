@@ -222,3 +222,7 @@ etc/*
 
 # Test module is likely present during development
 audittest.4gm
+
+# Analysis artifacts
+*.pq
+*.csv
