@@ -126,7 +126,10 @@ def main(argv=None):
     all_dfs = []
     total_files = 0
 
+    whole = len(roots)
+    part = 0
     for root_str in roots:
+        part += 1
         root = Path(root_str)
         if not root.exists() or not root.is_dir():
             print("ERROR: root directory not found or not a directory:", root, file=sys.stderr)
@@ -139,7 +142,7 @@ def main(argv=None):
             df['module'] = root.name
         all_dfs.append(df)
 
-        print(f"scanned: {root}")
+        print(f"scanned: {root}, {part} of {whole}")
         print(f"files found: {count}")
         print(f"Printing <=8 example rows:")
         if count:
