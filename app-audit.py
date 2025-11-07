@@ -34,10 +34,13 @@ def gather_stats(root: Path):
             vlog(f"skipping unreadable entry: {p} ({e})")
             continue
         n_lines = 0
+        n_comment_lines = 0
+        n_blank_lines = 0
         n_function_defines= 0
         n_prepare_defines= 0
         n_execute_statements= 0
         n_run_statements= 0
+        n_mz_statements= 0
         # Check for plaintext files by suffix
 
         plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
@@ -50,6 +53,25 @@ def gather_stats(root: Path):
                 with p.open("r", encoding="utf-8", errors="ignore") as f:
                     for line in f:
                         n_lines += 1
+                        if re.search(r'^\s*#.*', line, re.IGNORECASE):
+                            # Considering Copyright-related lines as "blank", not "comment"
+                            if (re.search(r'Copyright', line, re.IGNORECASE) or
+                                re.search(r'All rights reserved', line, re.IGNORECASE) or
+                                re.search(r'Use, modification', line, re.IGNORECASE) or
+                                re.search(r'software is limit', line, re.IGNORECASE)):
+                                n_blank_lines += 1
+                            # Considering lines with just # as "blank"
+                            elif re.search(r'^\s*#+$', line, re.IGNORECASE):
+                                n_blank_lines += 1 #101
+                            else:
+                            # All else of this match are (useful) comments
+                                n_comment_lines += 1
+                        # Considering empty or lines with just whitespace as "blank"
+                        if re.search(r'^\w*$', line, re.IGNORECASE):
+                            n_blank_lines += 1
+                        # Code lines that have a comment appended at the end
+                        if re.search(r'^[^#]+#+\s*\W.*$', line, re.IGNORECASE):
+                            n_comment_lines += 1
                         if re.search(r'.*function\s+\w+\(.*\)', line, re.IGNORECASE):
                             n_function_defines += 1
                         if re.search(r'.*prepare\s+\w+\s+from', line, re.IGNORECASE):
@@ -58,6 +80,8 @@ def gather_stats(root: Path):
                             n_execute_statements += 1
                         if re.search(r'.*run\s+', line, re.IGNORECASE):
                             n_run_statements += 1
+                        if re.search(r'.*mz\s+', line, re.IGNORECASE):
+                            n_mz_statements += 1
             except Exception as e:
                 vlog(f"could not count lines in {p}: {e}")
 
@@ -75,10 +99,13 @@ def gather_stats(root: Path):
             "uid": st.st_uid,
             "gid": st.st_gid,
             "num_lines": n_lines,
+            "num_comment_lines": n_comment_lines,
+            "num_blank_lines": n_blank_lines,
             "num_function_defines": n_function_defines,
             "num_prepare_defines": n_prepare_defines,
             "num_execute_statements": n_execute_statements,
             "num_run_statements": n_run_statements,
+            "num_mz_statements": n_mz_statements,
         })
     df = pd.DataFrame(rows)
     if not df.empty:
