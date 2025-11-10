@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 import sys
 import re
+from git import Repo,InvalidGitRepositoryError
 
 VERBOSE = False
 
@@ -21,8 +22,38 @@ def vlog(*args, **kwargs):
 def iso(ts: float) -> str:
     return datetime.fromtimestamp(ts).isoformat()
 
-def gather_stats(root: Path):
+def gather_stats(root: Path, no_git:bool=False):
     root = root.resolve()
+    # Following block caches git-repo data - runs once for each supplied module (.4gm)
+    git_repo = None
+    if not no_git:
+        try:
+            git_repo = Repo(root, search_parent_directories=True)
+            vlog(f"Repo for this root path: {git_repo}")
+        except(InvalidGitRepositoryError) as inv:
+            vlog(f"No repo found in parent directories, continuing on")
+
+    all_local_mod_files = None
+    if(git_repo != None):
+        all_local_mod_files = [git_repo.working_tree_dir + "/" + diff.a_path for diff in git_repo.index.diff(None)]
+        all_local_mod_files.extend([git_repo.working_tree_dir + "/" + diff.b_path for diff in git_repo.index.diff(None)])
+        all_local_mod_files = set(all_local_mod_files)
+        vlog(f"Repo shows {len(all_local_mod_files)} locally-modified files")
+
+    all_staged_files = None
+    if(git_repo != None):
+        all_staged_files = [git_repo.working_tree_dir + "/" + diff.a_path for diff in git_repo.index.diff("HEAD")]
+        all_staged_files.extend([git_repo.working_tree_dir + "/" + diff.b_path for diff in git_repo.index.diff("HEAD")])
+        all_staged_files = set(all_staged_files)
+        vlog(f"Repo shows {len(all_staged_files)} staged files with changes")
+
+    all_tracked_files = None
+    if(git_repo != None):
+        all_tracked_files = [entry.abspath for entry in git_repo.commit().tree.traverse()]
+        # This would almost work, and may be faster
+        # all_tracked_files = git_repo.git.ls_files().split()
+        vlog(f"Repo shows {len(all_tracked_files)} total files tracked in repo")
+
     rows = []
     for p in root.rglob('*'):
         # Following block only involves info in filesystem metadata (FAT)
@@ -34,6 +65,19 @@ def gather_stats(root: Path):
             # skip unreadable entries
             vlog(f"skipping unreadable entry: {p} ({e})")
             continue
+
+        # Following block involves info against cached git-repo data
+        b_tracked = False
+        if(git_repo and p.name in all_tracked_files):
+            b_tracked = True
+
+        b_local_mod = False
+        if(git_repo and p.name in all_local_mod_files ):
+            b_local_mod = True
+
+        b_staged = False
+        if(git_repo and p.name in all_staged_files ):
+            b_staged = True
 
         # Define "plaintext files" by suffix
         plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
@@ -114,6 +158,9 @@ def gather_stats(root: Path):
             "num_execute_statements": n_execute_statements,
             "num_run_statements": n_run_statements,
             "num_mz_statements": n_mz_statements,
+            "b_tracked_in_scm_repo": b_tracked,
+            "b_locally_modified": b_local_mod,
+            "b_staged_for_commit": b_staged,
         })
     df = pd.DataFrame(rows)
     if not df.empty:
@@ -121,9 +168,10 @@ def gather_stats(root: Path):
     return df
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Create a DataFrame of filesystem stats for one or more module directories.")
-    p.add_argument("roots", nargs="*", help="module directories to scan (default: audittest.4gm)")
-    p.add_argument("-o", "--out", help="optional output filename; use .parquet or .pq to write Parquet (falls back to CSV on error)")
+    p = argparse.ArgumentParser(description="Create a DataFrame of stats for one or more module directories.")
+    p.add_argument("roots", nargs="*", help="Module directories to scan (default: audittest.4gm)")
+    p.add_argument("-o", "--out", help="Optional output filename; use .parquet or .pq to write Parquet (falls back to CSV on error)")
+    p.add_argument("-i", "--nogit", action="store_true", help="Skip analysis steps that look for an SCM repo   in a parent-directory and relate it to found files. (default: not set - analysis will be attempted)")
     p.add_argument("-v", "--verbose", action="store_true", help="enable verbose logging")
     args = p.parse_args(argv)
 
@@ -143,7 +191,7 @@ def main(argv=None):
             print("ERROR: root directory not found or not a directory:", root, file=sys.stderr)
             continue
 
-        df = gather_stats(root)
+        df = gather_stats(root, args.nogit)
         count = len(df)
         total_files += count
         if count:
