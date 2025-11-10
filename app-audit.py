@@ -25,6 +25,7 @@ def gather_stats(root: Path):
     root = root.resolve()
     rows = []
     for p in root.rglob('*'):
+        # Following block only involves info in filesystem metadata (FAT)
         try:
             if not p.is_file():
                 continue
@@ -33,6 +34,14 @@ def gather_stats(root: Path):
             # skip unreadable entries
             vlog(f"skipping unreadable entry: {p} ({e})")
             continue
+
+        # Define "plaintext files" by suffix
+        plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
+            '.txt', '.md', '.csv', '.json', '.yaml', '.yml', '.ini', '.cfg',
+            '.py', '.pl', '.sh', '.bash', '.ksh', '.c', '.h', '.cpp', '.hpp',
+            '.js', '.ts', '.html', '.css', '.xml', '.bat', '.cmd', '.php'}
+
+        # Following block involves a full content-parse (intensive)
         n_lines = 0
         n_comment_lines = 0
         n_blank_lines = 0
@@ -41,13 +50,6 @@ def gather_stats(root: Path):
         n_execute_statements= 0
         n_run_statements= 0
         n_mz_statements= 0
-        # Check for plaintext files by suffix
-
-        plaintext_suffixes = {'.4gl', '.ext', '.org', '.sql', '.set', '.RDS',
-            '.txt', '.md', '.csv', '.json', '.yaml', '.yml', '.ini', '.cfg',
-            '.py', '.pl', '.sh', '.bash', '.ksh', '.c', '.h', '.cpp', '.hpp',
-            '.js', '.ts', '.html', '.css', '.xml', '.bat', '.cmd', '.php'}
-        
         if p.suffix.lower() in plaintext_suffixes or p.name == "Makefile":
             try:
                 with p.open("r", encoding="utf-8", errors="ignore") as f:
@@ -63,8 +65,11 @@ def gather_stats(root: Path):
                             # Considering lines with just # as "blank"
                             elif re.search(r'^\s*#+$', line, re.IGNORECASE):
                                 n_blank_lines += 1 #101
-                            else:
                             # All else of this match are (useful) comments
+                            # This includes code with comments appended per
+                            # European Cooperation for Space Standardization
+                            # (ECSS)
+                            else:
                                 n_comment_lines += 1
                         # Considering empty or lines with just whitespace as "blank"
                         if re.search(r'^\w*$', line, re.IGNORECASE):
@@ -72,6 +77,9 @@ def gather_stats(root: Path):
                         # Code lines that have a comment appended at the end
                         if re.search(r'^[^#]+#+\s*\W.*$', line, re.IGNORECASE):
                             n_comment_lines += 1
+                        # XXX   Refactor to categorize the kinds of statements
+                        #       (auth, time-consuming, risk, etc.), and allow
+                        #       them to be configurable
                         if re.search(r'.*function\s+\w+\(.*\)', line, re.IGNORECASE):
                             n_function_defines += 1
                         if re.search(r'.*prepare\s+\w+\s+from', line, re.IGNORECASE):
